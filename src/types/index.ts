@@ -11,9 +11,9 @@ export interface Transaction {
   Duplicate_Billing: string;
   Transaction_Time: string;
   Fraud_Flag: string;
-  riskScore?: number; // Added for compatibility with existing UI
+  riskScore?: number;
   riskFactors?: string[];
-  status?: 'normal' | 'suspicious' | 'fraudulent'; // Added for compatibility with existing UI
+  status?: 'normal' | 'suspicious' | 'fraudulent';
 }
 
 export interface ChatMessage {
