@@ -9,19 +9,23 @@ const FRAUD_PATTERNS = [
   },
   {
     pattern: 'amount',
-    response: 'Unusually large transaction amounts that deviate from your normal spending patterns can be a sign of fraud.'
+    response: 'Unusually large billing amounts that deviate from normal patterns can be a sign of fraud in healthcare transactions.'
   },
   {
-    pattern: 'location',
-    response: 'Transactions made from unusual locations or IP addresses different from your normal patterns may indicate account compromise.'
+    pattern: 'duplicate',
+    response: 'Duplicate billing is a common fraud indicator where the same service is billed multiple times.'
   },
   {
-    pattern: 'merchant',
-    response: 'New or unknown merchants, especially those without established reputations, can present higher fraud risks.'
+    pattern: 'insurance',
+    response: 'Insurance fraud can occur when claims are submitted for services that weren\'t provided or were unnecessarily performed.'
   },
   {
-    pattern: 'frequency',
-    response: 'Multiple transactions in rapid succession can be a sign that someone is testing your card or trying to maximize charges before detection.'
+    pattern: 'department',
+    response: 'Certain departments may have higher fraud risks due to the nature and cost of procedures performed.'
+  },
+  {
+    pattern: 'time',
+    response: 'Transactions made at unusual hours may indicate suspicious activity, especially when combined with other risk factors.'
   }
 ];
 
@@ -47,17 +51,26 @@ export const generateBotResponse = (message: string, transaction?: string): Chat
     }
   }
 
+  // Handle hospital-specific queries
+  if (message.toLowerCase().includes('hospital') || message.toLowerCase().includes('marengo')) {
+    return createBotMessage(`Marengo Asia Hospital in Faridabad is the medical facility where these transactions took place. Our system monitors all transactions for potential fraud indicators.`);
+  }
+
+  if (message.toLowerCase().includes('doctor') || message.toLowerCase().includes('patient')) {
+    return createBotMessage(`Our system tracks both Doctor IDs and Patient IDs to identify unusual patterns or relationships that might indicate fraudulent activity. For privacy reasons, we don't display personal information about doctors or patients.`);
+  }
+
   // Default responses based on message content
   if (message.toLowerCase().includes('help')) {
-    return createBotMessage(`I can help you understand your transactions and identify potential fraud. You can ask me about specific transactions, why a transaction was flagged, or about common fraud patterns.`);
+    return createBotMessage(`I can help you understand hospital transactions and identify potential fraud. You can ask me about specific transactions, why a transaction was flagged, or about common fraud patterns in healthcare billing.`);
   }
   
   if (message.toLowerCase().includes('fraud') || message.toLowerCase().includes('suspicious')) {
-    return createBotMessage(`Fraud detection is based on various factors including unusual spending patterns, location discrepancies, transaction amount, merchant reputation, and frequency of transactions. Is there a specific aspect you'd like to know more about?`);
+    return createBotMessage(`Healthcare fraud detection is based on various factors including unusual billing patterns, duplicate billing, insurance claim inconsistencies, department-specific risk factors, and transaction timing. Is there a specific aspect you'd like to know more about?`);
   }
 
   // Default response
-  return createBotMessage(`I'm your fraud detection assistant. You can ask me about your transactions, why something might be flagged as suspicious, or about common fraud patterns. How can I help you today?`);
+  return createBotMessage(`I'm your healthcare fraud detection assistant. You can ask me about hospital transactions, why something might be flagged as suspicious, or about common fraud patterns in medical billing. How can I help you today?`);
 };
 
 const createBotMessage = (text: string): ChatMessage => {
@@ -70,42 +83,78 @@ const createBotMessage = (text: string): ChatMessage => {
 };
 
 const generateTransactionAnalysis = (transaction: Transaction): string => {
-  if (transaction.status === 'normal') {
-    return `This transaction for $${transaction.amount} at ${transaction.merchant} appears normal with a low risk score of ${transaction.riskScore}/100.`;
-  } else if (transaction.status === 'suspicious') {
-    return `This transaction for $${transaction.amount} at ${transaction.merchant} has been flagged as suspicious with a risk score of ${transaction.riskScore}/100. Risk factors include: ${transaction.riskFactors?.join(', ')}.`;
+  const { 
+    Transaction_ID, 
+    Department, 
+    Billing_Amount, 
+    Payment_Mode, 
+    Insurance_Claimed,
+    Duplicate_Billing,
+    Fraud_Flag,
+    status,
+    riskScore,
+    riskFactors
+  } = transaction;
+  
+  if (Fraud_Flag === "Yes") {
+    return `WARNING: This transaction (ID: ${Transaction_ID}) for ₹${Billing_Amount.toFixed(2)} in the ${Department} department has been flagged as fraudulent with a high risk score of ${riskScore}/100. Risk factors include: ${riskFactors?.join(', ')}. We recommend investigating immediately.`;
+  }
+  
+  if (status === 'normal' || riskScore < 30) {
+    return `This transaction (ID: ${Transaction_ID}) for ₹${Billing_Amount.toFixed(2)} in the ${Department} department appears normal with a low risk score of ${riskScore}/100. Payment was made via ${Payment_Mode}${Insurance_Claimed === "Yes" ? " with insurance claims" : ""}.`;
+  } else if (status === 'suspicious' || (riskScore >= 30 && riskScore < 70)) {
+    return `This transaction (ID: ${Transaction_ID}) for ₹${Billing_Amount.toFixed(2)} in the ${Department} department has been flagged as suspicious with a risk score of ${riskScore}/100. Payment via ${Payment_Mode}${Insurance_Claimed === "Yes" ? " with insurance claims" : ""}. Risk factors include: ${riskFactors?.join(', ')}.`;
   } else {
-    return `WARNING: This transaction for $${transaction.amount} at ${transaction.merchant} appears to be fraudulent with a high risk score of ${transaction.riskScore}/100. It has been flagged for: ${transaction.riskFactors?.join(', ')}. We recommend contacting your bank immediately.`;
+    return `WARNING: This transaction (ID: ${Transaction_ID}) for ₹${Billing_Amount.toFixed(2)} in the ${Department} department appears to be fraudulent with a high risk score of ${riskScore}/100. It has been flagged for: ${riskFactors?.join(', ')}. We recommend further investigation.`;
   }
 };
 
 const generateRiskExplanation = (transaction: Transaction): string => {
-  if (transaction.status === 'normal') {
-    return `This transaction doesn't show any significant risk factors. It aligns with your normal spending patterns.`;
+  const { 
+    Department, 
+    Billing_Amount, 
+    Payment_Mode, 
+    Insurance_Claimed,
+    Duplicate_Billing,
+    status,
+    riskScore,
+    riskFactors
+  } = transaction;
+  
+  if ((status === 'normal' || riskScore < 30) && Duplicate_Billing === "No") {
+    return `This transaction doesn't show any significant risk factors. It aligns with normal billing patterns for the ${Department} department.`;
   }
   
   let explanation = `This transaction was flagged because:\n`;
   
-  if (transaction.riskFactors && transaction.riskFactors.length > 0) {
-    transaction.riskFactors.forEach(factor => {
+  if (Duplicate_Billing === "Yes") {
+    explanation += `- Duplicate Billing: The system detected this as a duplicate of another transaction with the same patient and similar amount.\n`;
+  }
+  
+  if (riskFactors && riskFactors.length > 0) {
+    riskFactors.forEach(factor => {
       explanation += `- ${capitalizeFirstLetter(factor)}: `;
       
       if (factor.includes('amount')) {
-        explanation += `The amount of $${transaction.amount} is higher than your typical spending in this category.\n`;
-      } else if (factor.includes('merchant')) {
-        explanation += `${transaction.merchant} is not a merchant you've transacted with before.\n`;
-      } else if (factor.includes('location')) {
-        explanation += `This transaction occurred in a location different from your usual activity.\n`;
+        explanation += `The amount of ₹${Billing_Amount.toFixed(2)} is higher than typical for this department or procedure.\n`;
+      } else if (factor.includes('duplicate')) {
+        explanation += `This appears to be a duplicate bill for services already charged.\n`;
       } else if (factor.includes('pattern')) {
-        explanation += `This transaction doesn't match your typical spending patterns.\n`;
-      } else if (factor.includes('international')) {
-        explanation += `International transactions carry additional risk factors.\n`;
-      } else if (factor.includes('device') || factor.includes('IP')) {
-        explanation += `This transaction was made from a device or IP address not previously associated with your account.\n`;
+        explanation += `This transaction doesn't match typical billing patterns for this department or provider.\n`;
+      } else if (factor.includes('hour') || factor.includes('time')) {
+        explanation += `This transaction occurred at an unusual time which may indicate suspicious activity.\n`;
+      } else if (factor.includes('insurance') || factor.includes('claim')) {
+        explanation += `There are unusual patterns in the insurance claim for this transaction.\n`;
+      } else if (factor.includes('same patient') || factor.includes('same amount')) {
+        explanation += `Multiple charges for the same patient with similar amounts in a short timeframe.\n`;
       } else {
-        explanation += `This is an unusual activity for your account.\n`;
+        explanation += `This represents an unusual activity pattern for hospital billing.\n`;
       }
     });
+  }
+  
+  if (Insurance_Claimed === "Yes" && explanation.includes('amount')) {
+    explanation += `\nNote: Insurance claims with unusually high amounts receive additional scrutiny in our fraud detection system.`;
   }
   
   return explanation;

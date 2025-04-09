@@ -23,7 +23,7 @@ const FraudDetectionChatbot = () => {
     const welcomeMessage: ChatMessageType = {
       id: 'welcome',
       sender: 'bot',
-      text: "Hello! I'm your FraudBot Guardian assistant. I can help you understand your transactions and identify potential fraud. You can ask me about specific transactions or general fraud detection patterns.",
+      text: "Hello! I'm your FraudBot Guardian assistant. I can help you analyze hospital billing transactions and identify potential fraud. You can ask me about specific transactions or general healthcare fraud patterns.",
       timestamp: new Date()
     };
     
@@ -44,7 +44,7 @@ const FraudDetectionChatbot = () => {
       sender: 'user',
       text: message,
       timestamp: new Date(),
-      relatedTransaction: selectedTransaction?.id
+      relatedTransaction: selectedTransaction ? selectedTransaction.Transaction_ID.toString() : undefined
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -55,7 +55,7 @@ const FraudDetectionChatbot = () => {
       // Generate bot response
       const botResponse = generateBotResponse(
         message, 
-        selectedTransaction?.id
+        selectedTransaction ? selectedTransaction.Transaction_ID.toString() : undefined
       );
       
       setMessages(prev => [...prev, botResponse]);
@@ -74,9 +74,9 @@ const FraudDetectionChatbot = () => {
     const systemMessage: ChatMessageType = {
       id: `system-${Date.now()}`,
       sender: 'bot',
-      text: `I've selected transaction #${transaction.id} from ${transaction.merchant} for $${transaction.amount}. What would you like to know about it?`,
+      text: `I've selected transaction #${transaction.Transaction_ID} from ${transaction.Department} department for ₹${transaction.Billing_Amount.toFixed(2)}. What would you like to know about it?`,
       timestamp: new Date(),
-      relatedTransaction: transaction.id
+      relatedTransaction: transaction.Transaction_ID.toString()
     };
     
     setMessages(prev => [...prev, systemMessage]);
@@ -102,10 +102,10 @@ const FraudDetectionChatbot = () => {
       
       {/* Transactions sidebar */}
       <div className="hidden lg:block lg:w-1/3 h-full border-l border-security-border bg-white p-4 overflow-y-auto">
-        <h2 className="font-bold text-lg mb-4 text-security-primary">Recent Transactions</h2>
+        <h2 className="font-bold text-lg mb-4 text-security-primary">Hospital Transactions</h2>
         {transactions.map(transaction => (
           <TransactionCard 
-            key={transaction.id} 
+            key={transaction.Transaction_ID} 
             transaction={transaction}
             onAnalyze={handleAnalyzeTransaction}
           />

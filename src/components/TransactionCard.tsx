@@ -11,9 +11,21 @@ interface TransactionCardProps {
 }
 
 const TransactionCard = ({ transaction, onAnalyze }: TransactionCardProps) => {
-  const { status, merchant, amount, date, category, riskScore } = transaction;
+  const { 
+    Transaction_ID, 
+    Hospital_Name, 
+    Department, 
+    Billing_Amount,
+    Transaction_Time, 
+    Payment_Mode,
+    Fraud_Flag,
+    status,
+    riskScore 
+  } = transaction;
   
   const getStatusColor = () => {
+    if (Fraud_Flag === "Yes") return 'bg-security-warning text-white';
+    
     switch (status) {
       case 'normal':
         return 'bg-security-success text-white';
@@ -27,6 +39,8 @@ const TransactionCard = ({ transaction, onAnalyze }: TransactionCardProps) => {
   };
   
   const getStatusText = () => {
+    if (Fraud_Flag === "Yes") return 'Fraudulent';
+    
     switch (status) {
       case 'normal': 
         return 'Safe';
@@ -39,16 +53,26 @@ const TransactionCard = ({ transaction, onAnalyze }: TransactionCardProps) => {
     }
   };
 
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    try {
+      const [datePart, timePart] = dateString.split(' ');
+      return `${datePart} • ${timePart}`;
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   return (
     <Card className="mb-4 overflow-hidden border-l-4 shadow-sm hover:shadow-md transition-shadow" 
-      style={{ borderLeftColor: status === 'normal' ? '#06D6A0' : status === 'suspicious' ? '#FFD166' : '#FF6B6B' }}>
+      style={{ borderLeftColor: Fraud_Flag === "Yes" ? '#FF6B6B' : status === 'normal' ? '#06D6A0' : status === 'suspicious' ? '#FFD166' : '#FF6B6B' }}>
       <CardHeader className="py-3">
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle className="text-lg font-semibold">{merchant}</CardTitle>
-            <CardDescription>{date} • {category}</CardDescription>
+            <CardTitle className="text-lg font-semibold">{Department}</CardTitle>
+            <CardDescription>{formatDate(Transaction_Time)}</CardDescription>
           </div>
-          <div className="text-xl font-bold">${amount.toFixed(2)}</div>
+          <div className="text-xl font-bold">₹{Billing_Amount.toFixed(2)}</div>
         </div>
       </CardHeader>
       <CardContent className="py-2">
@@ -69,6 +93,10 @@ const TransactionCard = ({ transaction, onAnalyze }: TransactionCardProps) => {
             </div>
             <span className="text-sm ml-2">{riskScore}/100</span>
           </div>
+        </div>
+        <div className="mt-2 text-sm text-gray-600">
+          <p>Payment: {Payment_Mode}</p>
+          <p>ID: {Transaction_ID}</p>
         </div>
       </CardContent>
       <CardFooter className="pt-2 pb-3">
